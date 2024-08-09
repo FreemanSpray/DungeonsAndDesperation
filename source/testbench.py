@@ -615,27 +615,22 @@ class Game:
         match vote:
             case 1:
                 numVotes[0] += 1
-                validInput = True
                 self.displayText('You voted for Wellness.')
                 playerVotes[0] = 'Wellness'
             case 2:
                 numVotes[1] += 1
-                validInput = True
                 self.displayText('You voted for Freedom.')
                 playerVotes[0] = 'Freedom'
             case 3:
                 numVotes[2] += 1
-                validInput = True
                 self.displayText('You voted for Knowledge.')
                 playerVotes[0] = 'Knowledge'
             case 4:
                 numVotes[3] += 1
-                validInput = True
                 self.displayText('You voted for Resources.')
                 playerVotes[0] = 'Resources'
             case 5:
                 numVotes[4] += 1
-                validInput = True
                 self.displayText('You voted for Doom.')
                 playerVotes[0] = 'Doom'
         # Continue to AI votes and results
@@ -654,13 +649,13 @@ class Game:
         # get AI votes
         for p in self.getOtherActionablePlayers(self.player):
             if p.shouldAiEscape():
-                numVotes[1] += 1
+                numVotes[0] += 1
                 playerVotes[p.id - 1] = 'Wellness'
             elif self.partySupplies < 4:
-                numVotes[3] += 1
+                numVotes[1] += 1
                 playerVotes[p.id - 1] = 'Freedom'
             elif p.exhaustionLevel > 1:
-                numVotes[0] += 1
+                numVotes[3] += 1
                 playerVotes[p.id - 1] = 'Resources'
             else:
                 numVotes[2] += 1
@@ -809,7 +804,7 @@ class Game:
             # Stop game
             self.isGame = False
         # If all rooms have been cleared, check for key, then end game
-        if self.roomIndex == 6:
+        elif self.roomIndex == 6:
             if self.isKeyFound:
                 self.displayText('Beyond the dungeon\'s final room you are met only with a wall of stone. Set into the base of this wall is a tiny hatch, openable with the key you have found. Engravings on the wall however reveal that this hatch will only admit one player through before it locks again forever.')
                 # Find most exhausted player from among those still alive and not escaped
@@ -3360,6 +3355,9 @@ if __name__ == '__main__':
  # TODO:
 
  # BUG:
- # Players getting stunned is ending the game
+ # Fisherwoman stun is breaking the turn after along with all future text color display
+ # Cloudblessed reveal message is not output when the player dies.
  # Original version bug that seemingly causes players that have attempted to pass and have no other options available to automatically move to next room after one of them kills a player
- # Some text is getting moved to the bottom in display instead of all scrolling in order
+ # Some text is getting moved to the bottom in display instead of all scrolling in order. Text color displays is screwing up at the same time. - could be due to the escaped single quote in that text?
+ # Players that die should not complete any action (passing at least still succeeds as of now)
+ # Reached max recursion depth after wasting away in the Tower while two other players are alive
