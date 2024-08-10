@@ -211,6 +211,8 @@ class Game:
                     self.colorText(c['shortName'], c['shortName'])
                 for r in g_roles:
                     self.colorText(r['shortName'], r['shortName'])
+                # Jump to most recent text
+                textBox.see('end')
             # Otherwise print like normal
             else:
                 print(output)
@@ -3367,7 +3369,9 @@ if __name__ == '__main__':
  # TODO:
 
  # BUG:
- # Cloudblessed reveal message is not output when the player dies.
+ # Cloudblessed reveal message is not output when the player dies
  # Original version bug that seemingly causes players that have attempted to pass and have no other options available to automatically move to next room after one of them kills a player
  # Players that die should not complete any action (passing at least still succeeds as of now)
  # NPCs can't waste away as long as the player is trying to pass
+ # Occasionally getting double input buttons when passing - seems like NPC Reika anchoring has to do with it
+ # It seems that Reika anchoring can also produce a loop
