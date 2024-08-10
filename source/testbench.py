@@ -1022,44 +1022,96 @@ class Game:
 
     """
     pre: called as part of the results phase.
-    post: calls investigate on the current room if at least 1 player explored. Advances to next step in results phase.
+    post: calls investigate on the current room if the requirements were met. Advances to next step in results phase unless a halt is needed for input.
     """
     def investigateResults(self):
-        # Carry out investigate action
-        if self.investigateTotal > 0:
-            self.location.investigate(self.investigateTotal)
-            if self.location.room['id'] == 1:
+        # No need to report if no one tried
+        if self.investigateTotal == 0:
+            # Advance stack
+            self.advanceStack()
+            return
+        # Extract room for ease of access
+        room = self.location.room
+        # Calculate discount for Breaking the Magic if the mirror has been successfully interrogated
+        discount = 0
+        if self.isCluedIn and room['id'] == 1:
+            discount = 2
+        # Report failure
+        if self.investigateTotal < room['requirements'][0] - discount:
+            # Calculate discount for if mirror was successfully interrogated
+            self.displayText('The party failed to ' + room['actions'][0] + ' (' + str(self.investigateTotal) + ' Ingenuity contributed, ' + str(room['requirements'][0] - discount) + ' needed).')
+            # Advance stack
+            self.advanceStack()
+        # Report success and carry out outcome
+        else:
+            self.displayText('The party was able to ' + room['actions'][0] + ' (' + str(self.investigateTotal) + ' Ingenuity contributed, ' + str(room['requirements'][0] - discount) + ' needed).')
+            # Update room to disallow future attempts to investigate
+            self.location.hasBeenInvestigated = True
+            # Carry out result
+            self.location.investigate()
+            # Advance stack unless room action is awaiting player input (in case of Break the Magic)
+            if room['id'] == 1:
                 return
-        # Advance stack unless room action is awaiting player input (in case of Break the Magic)
-        self.advanceStack()
+            self.advanceStack()
     # END INVESTIGATE RESULTS
 
     """
     pre: called as part of the results phase.
-    post: calls exert on the current room if at least 1 player explored. Advances to next step in results phase.
+    post: calls exert on the current room if the requirements were met. Advances to next step in results phase unless a halt is needed for input.
     """
     def exertResults(self):
-        # Carry out exert action
-        if self.exertTotal > 0:
-            self.location.exert(self.exertTotal)
-            if self.location.room['id'] == 4:
+        # No need to report if no one tried
+        if self.investigateTotal == 0:
+            # Advance stack
+            self.advanceStack()
+            return
+        # Extract room for ease of access
+        room = self.location.room
+        # Report failure
+        if self.exertTotal < room['requirements'][1]:
+            self.displayText('The party failed to ' + room['actions'][1] + ' (' + str(self.exertTotal) + ' Resolve contributed, ' + str(room['requirements'][1]) + ' needed).')
+            # Advance stack
+            self.advanceStack()
+        # Report success and carry out outcome
+        else:
+            self.displayText('The party was able to ' + room['actions'][1] + ' (' + str(self.exertTotal) + ' Resolve contributed, ' + str(room['requirements'][1]) + ' needed).')
+            # Update room to disallow future attempts to exert
+            self.hasBeenExerted = True
+            # Carry out result
+            self.location.exert()
+            # Advance stack unless room action is awaiting player input (in case of Wish at the Well)
+            if room['id'] == 4:
                 return
-        # Advance stack unless room action is awaiting player input (in case of Wish at the Well)
-        self.advanceStack()
+            self.advanceStack()
     # END EXERT RESULTS
 
     """
     pre: called as part of the results phase.
-    post: calls explore on the current room if at least 1 player explored. Advances to next step in results phase.
+    post: calls explore on the current room if the requirements were met. Advances to next step in results phase unless a halt is needed for input.
     """
     def exploreResults(self):
-        # Carry out explore action
-        if self.exploreTotal > 0:
-            self.location.explore(self.exploreTotal) 
-            if self.location.room['id'] == 0:
+        # No need to report if no one tried
+        if self.investigateTotal == 0:
+            # Advance stack
+            self.advanceStack()
+            return
+        # Extract room for ease of access
+        room = self.location.room
+        # Report failure
+        if self.exploreTotal < room['requirements'][2]:
+            g_game.displayText('The party failed to ' + room['actions'][2] + ' (' + str(self.exploreTotal) + ' Finesse contributed, ' + str(room['requirements'][2]) + ' needed).')
+            # Advance stack
+            self.advanceStack()
+        # Report success and carry out outcome
+        else:
+            g_game.displayText('The party was able to ' + room['actions'][2] + ' (' + str(self.exploreTotal) + ' Finesse contributed, ' + str(room['requirements'][2]) + ' needed).')
+            # Update room to disallow future attempts to explore
+            self.hasBeenExplored = True
+            self.location.explore()
+            # Advance stack unless room action is awaiting player input (in case of Take the High Ground)
+            if room['id'] == 0:
                 return
-        # Advance stack unless room action is awaiting player input (in case of Take the High Ground)
-        self.advanceStack()
+            self.advanceStack()
     # END EXPLORE RESULTS
 
     """
@@ -2969,253 +3021,219 @@ class Location:
     # END PASSPLAYERS
 
     """
-    pre: should be called exactly once during each turn sequence.
-    param: total, the total number of points of ingenuity contributed by all players that took the investigate room action this turn.
-    post: if param: total is high enough to succeed the current room's requirements, the party is rewarded in a matter suited to the current room.
+    pre: should be called exactly once during each turn sequence, if the investigate total was greater than the room's requirements
+    post: if param: party is rewarded in a matter suited to the current room
     """
-    def investigate(self, total:int):
+    def investigate(self):
         # Load game
         global g_game
-        # Calculate discount for Breaking the Magic if the mirror has been successfully interrogated
-        discount = 0
-        if g_game.isCluedIn and self.room['id'] == 1:
-            discount = 2
-        # Report failure
-        if total < self.room['requirements'][0] - discount:
-            # Calculate discount for if mirror was successfully interrogated
-            g_game.displayText('The party failed to ' + self.room['actions'][0] + ' (' + str(total) + ' Ingenuity contributed, ' + str(self.room['requirements'][0] - discount) + ' needed).')
-        # Report success and carry out outcome
-        else:
-            g_game.displayText('The party was able to ' + self.room['actions'][0] + ' (' + str(total) + ' Ingenuity contributed, ' + str(self.room['requirements'][0] - discount) + ' needed).')
-            # Update room to disallow future attempts to investigate
-            self.hasBeenInvestigated = True
-            # Carry out result
-            match self.room['actions'][0]:
-                case 'Plumb the Wreckage':
-                    g_game.displayText('Your careful search rewards you with 2 supplies found among the bodies and scrap.')
-                    # Add supplies
-                    g_game.partySupplies += 2
-                case 'Break the Magic':
-                    g_game.displayText('With the removal of a single brick, marked with a symbol pointed to by a long string of clues, the tower begins to crumble around you. Acting quickly, you all manage to escape in time.')
-                    # Exhaust players that are in the room when the tower breaks
-                    for p in g_game.allPlayers:
-                        if p.isAbleToAct():
-                            p.gainExhaustion()
-                    # Mark tower as broken
-                    g_game.isTowerBroken = True
-                    g_game.displayText('Left behind in the place where the Tower\'s highest reaches had stood is another vault, suspended still in midair. As the party looks on, the door to the vault turns, then opens. From within, pale moonlight spills forth, and the light is in the visage of a woman. She descends to you, identifying herself as the physical embodiment of Casglowve. She intends to leave this dungeon right now, and she will take the most exhausted player with her.')
-                    # Select random player from among most exhausted players
-                    randomPlayer = getMostExhaustedPlayer(g_game.getActionablePlayers())
-                    # Check if a player was found since exhaustion could have killed all remaning players
-                    if randomPlayer:
-                        # If random player is the player, give them the choice to escape
-                        if randomPlayer.isPlayer():
-                            g_game.displayText('You have been chosen from among the most exhausted players. Will you choose to escape?')
-                            # Set input for player to choose Y/N from
-                            g_game.setYNInput(g_game.getCasglowveOffer)
+        match self.room['actions'][0]:
+            case 'Plumb the Wreckage':
+                g_game.displayText('Your careful search rewards you with 2 supplies found among the bodies and scrap.')
+                # Add supplies
+                g_game.partySupplies += 2
+            case 'Break the Magic':
+                g_game.displayText('With the removal of a single brick, marked with a symbol pointed to by a long string of clues, the tower begins to crumble around you. Acting quickly, you all manage to escape in time.')
+                # Exhaust players that are in the room when the tower breaks
+                for p in g_game.allPlayers:
+                    if p.isAbleToAct():
+                        p.gainExhaustion()
+                # Mark tower as broken
+                g_game.isTowerBroken = True
+                g_game.displayText('Left behind in the place where the Tower\'s highest reaches had stood is another vault, suspended still in midair. As the party looks on, the door to the vault turns, then opens. From within, pale moonlight spills forth, and the light is in the visage of a woman. She descends to you, identifying herself as the physical embodiment of Casglowve. She intends to leave this dungeon right now, and she will take the most exhausted player with her.')
+                # Select random player from among most exhausted players
+                randomPlayer = getMostExhaustedPlayer(g_game.getActionablePlayers())
+                # Check if a player was found since exhaustion could have killed all remaning players
+                if randomPlayer:
+                    # If random player is the player, give them the choice to escape
+                    if randomPlayer.isPlayer():
+                        g_game.displayText('You have been chosen from among the most exhausted players. Will you choose to escape?')
+                        # Set input for player to choose Y/N from
+                        g_game.setYNInput(g_game.getCasglowveOffer)
+                    else:
+                        # Otherwise decide choice of AI
+                        shouldEscape = randomPlayer.shouldAiEscape()
+                        if shouldEscape:
+                            g_game.displayText(randomPlayer.character['shortName'] + ' was chosen from among the most exhausted players. They chose to accept the offer and escape.')
+                            # AI escapes
+                            randomPlayer.escape()
                         else:
-                            # Otherwise decide choice of AI
-                            shouldEscape = randomPlayer.shouldAiEscape()
-                            if shouldEscape:
-                                g_game.displayText(randomPlayer.character['shortName'] + ' was chosen from among the most exhausted players. They chose to accept the offer and escape.')
-                                # AI escapes
-                                randomPlayer.escape()
+                            g_game.displayText(randomPlayer.character['shortName'] + ' was chosen from among the most exhausted players. They chose to decline the offer and remain in their exhaustion.')
+                        # Advance stack
+                        g_game.advanceStack()
+                else:
+                    g_game.displayText('Unfortunately no players remain alive.')
+            case 'Follow the Twine':
+                # Roll a D3. On a 1, a random player is cursed. On a 2, all players immediately enter a new room. On a 3, a random player escapes.
+                g_game.displayText('You expertly navigate the twists and turns of the twine and in following it, you come to understand the true nature of the alley as a fulcrum of potential. Chaos, in a word. ')
+                g_game.displayText('What you find at the end of the path is as unexpected for you as it no doubt was for the layer of the twine, if they even encountered the same fate:')
+                randomFate = rng.randint(1,3)
+                match randomFate:
+                    case 1:
+                        # Choose a random player from among those able to act
+                        playersAbleToAct = []
+                        for p in g_game.allPlayers:
+                            if p.isAbleToAct():
+                                playersAbleToAct.append(p)
+                        # If such a player exists
+                        if len(playersAbleToAct) > 0:
+                            randomPlayerIndex = rng.randint(0,len(playersAbleToAct)-1)
+                            randomPlayer = playersAbleToAct[randomPlayerIndex]
+                            # Curse player
+                            randomPlayer.timesCursed += 1
+                            # Output result for player
+                            if randomPlayer.id == 1:
+                                g_game.displayText('A vision so densely packed with data as to be physically hazardous leaps from the well of darkness the twine drops into and plants itself inside your head. You become cursed.')
+                            # Output result for AI:
                             else:
-                                g_game.displayText(randomPlayer.character['shortName'] + ' was chosen from among the most exhausted players. They chose to decline the offer and remain in their exhaustion.')
-                            # Advance stack
-                            g_game.advanceStack()
+                                g_game.displayText('A vision so densely packed with data as to be physically hazardous leaps from the well of darkness the twine drops into and plants itself inside ' + randomPlayer.character['shortName'] + '\'s head. They become cursed.')
+                    case 3:
+                        # Choose a random player from among those able to act
+                        playersAbleToAct = []
+                        for p in g_game.allPlayers:
+                            if p.isAbleToAct():
+                                playersAbleToAct.append(p)
+                        # If such a player exists
+                        if len(playersAbleToAct) > 0:
+                            randomPlayerIndex = rng.randint(0,len(playersAbleToAct)-1)
+                            randomPlayer = playersAbleToAct[randomPlayerIndex]
+                            # Player escapes
+                            randomPlayer.escape()
+                            # Output result for player
+                            if randomPlayer.id == 1:
+                                g_game.displayText('A whip of cold energy lashes you, and suddenly you are in another place, the dungeon a distant memory. You have escaped.')
+                            # Output result for AI:
+                            else:
+                                g_game.displayText('A whip of cold energy lashes out to grab ' + randomPlayer.character['shortName'] + ', and suddenly they are pulled through a tiny gap in the fabric of the road that closes behind them just as quickly as it opened. Have they escaped? It\'s impossible to say for sure.')
+            case 'Answer the Riddle':
+                # Determine which answer is needed
+                if self.riddleAnswer == 1:
+                    hint = 'Decorum demands that a price be paid by the first guest to leave.'
+                else:
+                    hint = 'Decorum demands that a price be paid by the last guest to leave.'
+                g_game.displayText('The riddle asks the following question: \'what owes its likeness to the past, yet is most vibrant in the present? Is to some a prison, to others a stage? To some a mirror, others an open window, still others a blissful mystery? Is the greatest contest to have no prize but countless losers?\' Careful thought yields the answer to the riddle: decorum. When you speak the answer aloud, the writing on the wall changes before your very eyes. It now reads: ' + hint)
+                # Mark riddle as answered
+                self.isRiddleAnswered = True
+            case 'Analyze the Music':
+                g_game.displayText('The rhythmic beat of the wind through the trees is almost like drums, peculiarly, and as you listen, you\'re struck with the bizarre notion that this sound is actually louder in some directions than others. You follow the sound until it brings to the very edge of the cradle, where you\'re faced with a wall of soil, detritus, and moving, breathing fungal shelf.')
+                # Output is different if the player has already seen the wandering heart
+                if g_game.player:
+                    if g_game.player.timesSeenHeart > 0:
+                        g_game.displayText('Peeling away dirt and snaking, tuberous fungal matter, you manage to poke a hole through the wall of the cradle, through which a warm red light shines. Looking through the hole, you see the source of the light is a great, pulsing hunk of red and pink tissue. It is the heart you saw before. What is it doing here?')
                     else:
-                        g_game.displayText('Unfortunately no players remain alive.')
-                case 'Follow the Twine':
-                    # Roll a D3. On a 1, a random player is cursed. On a 2, all players immediately enter a new room. On a 3, a random player escapes.
-                    g_game.displayText('You expertly navigate the twists and turns of the twine and in following it, you come to understand the true nature of the alley as a fulcrum of potential. Chaos, in a word. ')
-                    g_game.displayText('What you find at the end of the path is as unexpected for you as it no doubt was for the layer of the twine, if they even encountered the same fate:')
-                    randomFate = rng.randint(1,3)
-                    match randomFate:
-                        case 1:
-                            # Choose a random player from among those able to act
-                            playersAbleToAct = []
-                            for p in g_game.allPlayers:
-                                if p.isAbleToAct():
-                                    playersAbleToAct.append(p)
-                            # If such a player exists
-                            if len(playersAbleToAct) > 0:
-                                randomPlayerIndex = rng.randint(0,len(playersAbleToAct)-1)
-                                randomPlayer = playersAbleToAct[randomPlayerIndex]
-                                # Curse player
-                                randomPlayer.timesCursed += 1
-                                # Output result for player
-                                if randomPlayer.id == 1:
-                                    g_game.displayText('A vision so densely packed with data as to be physically hazardous leaps from the well of darkness the twine drops into and plants itself inside your head. You become cursed.')
-                                # Output result for AI:
-                                else:
-                                    g_game.displayText('A vision so densely packed with data as to be physically hazardous leaps from the well of darkness the twine drops into and plants itself inside ' + randomPlayer.character['shortName'] + '\'s head. They become cursed.')
-                        case 3:
-                            # Choose a random player from among those able to act
-                            playersAbleToAct = []
-                            for p in g_game.allPlayers:
-                                if p.isAbleToAct():
-                                    playersAbleToAct.append(p)
-                            # If such a player exists
-                            if len(playersAbleToAct) > 0:
-                                randomPlayerIndex = rng.randint(0,len(playersAbleToAct)-1)
-                                randomPlayer = playersAbleToAct[randomPlayerIndex]
-                                # Player escapes
-                                randomPlayer.escape()
-                                # Output result for player
-                                if randomPlayer.id == 1:
-                                    g_game.displayText('A whip of cold energy lashes you, and suddenly you are in another place, the dungeon a distant memory. You have escaped.')
-                                # Output result for AI:
-                                else:
-                                    g_game.displayText('A whip of cold energy lashes out to grab ' + randomPlayer.character['shortName'] + ', and suddenly they are pulled through a tiny gap in the fabric of the road that closes behind them just as quickly as it opened. Have they escaped? It\'s impossible to say for sure.')
-                case 'Answer the Riddle':
-                    # Determine which answer is needed
-                    if self.riddleAnswer == 1:
-                        hint = 'Decorum demands that a price be paid by the first guest to leave.'
-                    else:
-                        hint = 'Decorum demands that a price be paid by the last guest to leave.'
-                    g_game.displayText('The riddle asks the following question: \'what owes its likeness to the past, yet is most vibrant in the present? Is to some a prison, to others a stage? To some a mirror, others an open window, still others a blissful mystery? Is the greatest contest to have no prize but countless losers?\' Careful thought yields the answer to the riddle: decorum. When you speak the answer aloud, the writing on the wall changes before your very eyes. It now reads: ' + hint)
-                    # Mark riddle as answered
-                    self.isRiddleAnswered = True
-                case 'Analyze the Music':
-                    g_game.displayText('The rhythmic beat of the wind through the trees is almost like drums, peculiarly, and as you listen, you\'re struck with the bizarre notion that this sound is actually louder in some directions than others. You follow the sound until it brings to the very edge of the cradle, where you\'re faced with a wall of soil, detritus, and moving, breathing fungal shelf.')
-                    # Output is different if the player has already seen the wandering heart
-                    if g_game.player:
-                        if g_game.player.timesSeenHeart > 0:
-                            g_game.displayText('Peeling away dirt and snaking, tuberous fungal matter, you manage to poke a hole through the wall of the cradle, through which a warm red light shines. Looking through the hole, you see the source of the light is a great, pulsing hunk of red and pink tissue. It is the heart you saw before. What is it doing here?')
-                        else:
-                            g_game.displayText('Peeling away dirt and snaking, tuberous fungal matter, you manage to poke a hole through the wall of the cradle, through which a warm red light shines. Looking through the hole, you see the source of the light is a great, pulsing hunk of red and pink tissue. An enormous, beating heart.')
-                    # Mark each active player as having seen the wandering heart and reset their exhaustion levels to 0
-                    for p in g_game.allPlayers:
-                        if p.isAbleToAct():
-                            p.seeHeart()
-                case 'Interpret the Sigils':
-                    g_game.displayText('You piece together the remnants of a warning of what is to come. Two rooms from this one, you will encounter: ')
-                    # Print name of the room two indices from the current one (at g_game.roomIndex - 1)
-                    try:
-                        futureRoom = g_game.shuffledRooms[g_game.roomIndex + 1]
-                        g_game.displayText(futureRoom['name'] + '.')
-                    # If there is no such room, report this
-                    except IndexError:
-                        g_game.displayText('nothing. One or fewer rooms remain to be explored.')
+                        g_game.displayText('Peeling away dirt and snaking, tuberous fungal matter, you manage to poke a hole through the wall of the cradle, through which a warm red light shines. Looking through the hole, you see the source of the light is a great, pulsing hunk of red and pink tissue. An enormous, beating heart.')
+                # Mark each active player as having seen the wandering heart and reset their exhaustion levels to 0
+                for p in g_game.allPlayers:
+                    if p.isAbleToAct():
+                        p.seeHeart()
+            case 'Interpret the Sigils':
+                g_game.displayText('You piece together the remnants of a warning of what is to come. Two rooms from this one, you will encounter: ')
+                # Print name of the room two indices from the current one (at g_game.roomIndex - 1)
+                try:
+                    futureRoom = g_game.shuffledRooms[g_game.roomIndex + 1]
+                    g_game.displayText(futureRoom['name'] + '.')
+                # If there is no such room, report this
+                except IndexError:
+                    g_game.displayText('nothing. One or fewer rooms remain to be explored.')
     # END INVESTIGATE
 
     """
-    pre: should be called exactly once during each turn sequence.
-    param: total, the total number of points of resolve contributed by all players that took the exert room action this turn.
-    post: if param: total is high enough to succeed the current room's requirements, the party is rewarded in a matter suited to the current room.
+    pre: should be called exactly once during each turn sequence, if the exert total was greater than the room's requirements
+    post: if param: party is rewarded in a matter suited to the current room
     """
-    def exert(self, total:int):
+    def exert(self):
         # Load game
         global g_game
-        # Report failure
-        if total < self.room['requirements'][1]:
-            g_game.displayText('The party failed to ' + self.room['actions'][1] + ' (' + str(total) + ' Resolve contributed, ' + str(self.room['requirements'][1]) + ' needed).')
-        # Report success and carry out outcome
-        else:
-            g_game.displayText('The party was able to ' + self.room['actions'][1] + ' (' + str(total) + ' Resolve contributed, ' + str(self.room['requirements'][1]) + ' needed).')
-            # Update room to disallow future attempts to exert
-            self.hasBeenExerted = True
-            # Carry out result
-            match self.room['actions'][1]:
-                case 'Free the Blade':
-                    g_game.displayText('A cold certainty fills you as the blade is wrested free of its resting place. With this blade drawn, it cannot be put back to rest until blood has been shed. All attacks will incur an extra level of exhaustion on their target until the next time a player dies.')
-                    g_game.isSwordDrawn = True
-                case 'Interrogate the Mirror':
-                    g_game.displayText('The mirror is not cooperative, but through carefully worded questions and a healthy measure of psychology, you manage to trick it into revealing a critical detail about the nature of this tower: it is a prison for the mind as much as it is the body. With this knowledge, you will have an easier time breaking the tower should you choose to do so.')
-                    g_game.isCluedIn = True
-                case 'Confront the Beast':
-                    g_game.displayText('You turn and wait for the beast that lumbers behind you to catch up. Your resolve holds strong as the sounds of its ragged breaths grows louder, and just when the sound is so loud you cannot hear yourself breathe over it, it begins to fade. Soon the breathing and footsteps both have faded to nothing. In their absence, your body swells with a newfound and deeply unnatural strength. You may be able to survive that which is not survivable, now ... though it may come at a cost.')
-                    # Mark each active player as having conquered their fear
-                    for p in g_game.allPlayers:
-                        if p.isAbleToAct():
-                            p.hasConqueredFear = True
-                case 'Sit at the Table':
-                    g_game.displayText('A tranquil calm settles over you as you seat yourself at the grand dining table and wait for the tides of fate to change. They do not, but after a while you have almost come to terms with this. Each party member gains the benefit of a rest.')
-                    # all active players rest
-                    for p in g_game.allPlayers:
-                        if p.isAbleToAct():
-                            p.rest()
-                case 'Wish at the Well':
-                    g_game.displayText('The surface of the well shimmers with a barely contained skin of magic. You experiment with all variety of items dropped into it, to no effect. Coins, flowers, trinkets are swallowed whole by the dark waters, giving nothing in return. Finally, you think to feed the well a drop of your blood. Immediately, you feel the price exacted as a curse takes hold of you. You may each make a single wish of the well, so choose wisely.')
-                    g_game.displayText('You may secretly vote for one of the following:')
-                    numVotes = [0, 0, 0, 0, 0]
-                    playerVotes = [None, None, None, None]
-                    # Collect vote from player if they are able to act
-                    if g_game.player.isAbleToAct():
-                        # Set input to process player vote
-                        g_game.setVoteInput(numVotes, playerVotes)    
-                    # Otherwise move straight to AI votes and result     
+        match self.room['actions'][1]:
+            case 'Free the Blade':
+                g_game.displayText('A cold certainty fills you as the blade is wrested free of its resting place. With this blade drawn, it cannot be put back to rest until blood has been shed. All attacks will incur an extra level of exhaustion on their target until the next time a player dies.')
+                g_game.isSwordDrawn = True
+            case 'Interrogate the Mirror':
+                g_game.displayText('The mirror is not cooperative, but through carefully worded questions and a healthy measure of psychology, you manage to trick it into revealing a critical detail about the nature of this tower: it is a prison for the mind as much as it is the body. With this knowledge, you will have an easier time breaking the tower should you choose to do so.')
+                g_game.isCluedIn = True
+            case 'Confront the Beast':
+                g_game.displayText('You turn and wait for the beast that lumbers behind you to catch up. Your resolve holds strong as the sounds of its ragged breaths grows louder, and just when the sound is so loud you cannot hear yourself breathe over it, it begins to fade. Soon the breathing and footsteps both have faded to nothing. In their absence, your body swells with a newfound and deeply unnatural strength. You may be able to survive that which is not survivable, now ... though it may come at a cost.')
+                # Mark each active player as having conquered their fear
+                for p in g_game.allPlayers:
+                    if p.isAbleToAct():
+                        p.hasConqueredFear = True
+            case 'Sit at the Table':
+                g_game.displayText('A tranquil calm settles over you as you seat yourself at the grand dining table and wait for the tides of fate to change. They do not, but after a while you have almost come to terms with this. Each party member gains the benefit of a rest.')
+                # all active players rest
+                for p in g_game.allPlayers:
+                    if p.isAbleToAct():
+                        p.rest()
+            case 'Wish at the Well':
+                g_game.displayText('The surface of the well shimmers with a barely contained skin of magic. You experiment with all variety of items dropped into it, to no effect. Coins, flowers, trinkets are swallowed whole by the dark waters, giving nothing in return. Finally, you think to feed the well a drop of your blood. Immediately, you feel the price exacted as a curse takes hold of you. You may each make a single wish of the well, so choose wisely.')
+                g_game.displayText('You may secretly vote for one of the following:')
+                numVotes = [0, 0, 0, 0, 0]
+                playerVotes = [None, None, None, None]
+                # Collect vote from player if they are able to act
+                if g_game.player.isAbleToAct():
+                    # Set input to process player vote
+                    g_game.setVoteInput(numVotes, playerVotes)    
+                # Otherwise move straight to AI votes and result     
+                else:
+                    g_game.vote(numVotes, playerVotes)
+            case 'Navigate the Ice':
+                # Output is different if the player has already seen the wandering heart
+                if g_game.player:
+                    if g_game.player.timesSeenHeart > 0:
+                        g_game.displayText('A gentle thrumming clues you into the fact that there is something large and very much alive buried beneath your feet. As you make your way to the center of the enormous shadow under the ice, your steps become more careful, as hair-thin cracks begin to spiral out from them. Yet you make it without a hitch, and are rewarded with a glimpse of what lies beneath. A faint red glow reveals the pulsing of an enormous heart underneath the ice. It is the same heart you saw before. What is it doing here?')
                     else:
-                        g_game.vote(numVotes, playerVotes)
-                case 'Navigate the Ice':
-                    # Output is different if the player has already seen the wandering heart
-                    if g_game.player:
-                        if g_game.player.timesSeenHeart > 0:
-                            g_game.displayText('A gentle thrumming clues you into the fact that there is something large and very much alive buried beneath your feet. As you make your way to the center of the enormous shadow under the ice, your steps become more careful, as hair-thin cracks begin to spiral out from them. Yet you make it without a hitch, and are rewarded with a glimpse of what lies beneath. A faint red glow reveals the pulsing of an enormous heart underneath the ice. It is the same heart you saw before. What is it doing here?')
-                        else:
-                            g_game.displayText('A gentle thrumming clues you into the fact that there is something large and very much alive buried beneath your feet. As you make your way to the center of the enormous shadow under the ice, your steps become more careful, as hair-thin cracks begin to spiral out from them. Yet you make it without a hitch, and are rewarded with a glimpse of what lies beneath. A faint red glow reveals the pulsing of an enormous heart underneath the ice.')
-                    # Mark each active player as having seen the wandering heart and reset their exhaustion levels to 0
-                    for p in g_game.allPlayers:
-                        if p.isAbleToAct():
-                            p.seeHeart()
+                        g_game.displayText('A gentle thrumming clues you into the fact that there is something large and very much alive buried beneath your feet. As you make your way to the center of the enormous shadow under the ice, your steps become more careful, as hair-thin cracks begin to spiral out from them. Yet you make it without a hitch, and are rewarded with a glimpse of what lies beneath. A faint red glow reveals the pulsing of an enormous heart underneath the ice.')
+                # Mark each active player as having seen the wandering heart and reset their exhaustion levels to 0
+                for p in g_game.allPlayers:
+                    if p.isAbleToAct():
+                        p.seeHeart()
     # END EXERT
 
     """
-    pre: should be called exactly once during each turn sequence.
-    param: total, the total number of points of finesse contributed by all players that took the explore room action this turn.
-    post: if param: total is high enough to succeed the current room's requirements, the party is rewarded in a matter suited to the current room.
+    pre: should be called exactly once during each turn sequence, if the explore total was greater than the room's requirements
+    post: if param: party is rewarded in a matter suited to the current room
     """
-    def explore(self, total:int):
+    def explore(self):
         # Load game
         global g_game
-        # Report failure
-        if total < self.room['requirements'][2]:
-            g_game.displayText('The party failed to ' + self.room['actions'][2] + ' (' + str(total) + ' Finesse contributed, ' + str(self.room['requirements'][2]) + ' needed).')
-        # Report success and carry out outcome
-        else:
-            g_game.displayText('The party was able to ' + self.room['actions'][2] + ' (' + str(total) + ' Finesse contributed, ' + str(self.room['requirements'][2]) + ' needed).')
-            # Update room to disallow future attempts to explore
-            self.hasBeenExplored = True
-            # Carry out result
-            match self.room['actions'][2]:
-                case 'Take the High Ground':
-                    g_game.displayText('On the edge of the arena, you find a space where the piled junk reaches high enough that a player might be able to make it over the wall and into the next room if they get a boost up. Any number of players may take this opportunity as long as it least one chooses to stay behind.')
-                    # For each active player, give the option to stay behind or leave
-                    remainingPlayers = []
-                    leavingPlayers = []
-                    # If player is able to act, take player input
-                    if g_game.player.isAbleToAct():
-                        g_game.displayText('Will you choose to remain behind?')
-                        # Set input for player to choose Y/N from
-                        g_game.setYNInput(g_game.getHighGroundOffer)
-                    # Else move directly to AI choices and results
-                    else:
-                        g_game.highGround(False)
-                case 'Spring the Vaults':
-                    g_game.displayText('You deftly navigate the series of intricate traps and locks in place to wrest open the vaults in the Tower\'s basement. Inside the vast, dark space, you find only a single item, set neatly in the center of the floor. A key, to another door. You pocket the key, hoping that whatever it opens will be found in time.')
-                    # Add key to party inventory
-                    g_game.isKeyFound = True
-                case 'Loot the Storefronts':
-                    g_game.displayText('The storefronts have been largely picked over, but an extended search reveals 2 supplies hiding in cabinets and on shelves, in corners and behind locked doors.')
-                    # Add supplies
-                    g_game.partySupplies += 2
-                case 'Raid the Kitchen':
-                    g_game.displayText('You barge into the kitchen, interrupting a four-course meal being prepped by no one. All manner of foodstuffs sit out in a state of half or almost complete preparedness, just waiting to be served. You load your arms with all you can carry, walking away with 4 supplies.')
-                    g_game.displayText('Each party member also walks away with a curse upon their name.')
-                    # Add supplies
-                    g_game.partySupplies += 4
-                    # Add curse to each active player
-                    for p in g_game.allPlayers:
-                        if p.isAbleToAct():
-                            p.timesCursed += 1 
-                case 'Forage in the Marshland':
-                    g_game.displayText('There is much to be found here worth eating, when you know what you are looking for. With a careful eye, you harvest 3 supplies from the wilds.')
-                    # Add supplies
-                    g_game.partySupplies += 3
-                case 'Search for Shelter':
-                    g_game.displayText('Through a slight gap the surface of the cove\'s rocky exterior, you find a place where the party can hunker down and weather the storm.')
-                    g_game.isSheltered = True
+        # Carry out result
+        match self.room['actions'][2]:
+            case 'Take the High Ground':
+                g_game.displayText('On the edge of the arena, you find a space where the piled junk reaches high enough that a player might be able to make it over the wall and into the next room if they get a boost up. Any number of players may take this opportunity as long as it least one chooses to stay behind.')
+                # For each active player, give the option to stay behind or leave
+                remainingPlayers = []
+                leavingPlayers = []
+                # If player is able to act, take player input
+                if g_game.player.isAbleToAct():
+                    g_game.displayText('Will you choose to remain behind?')
+                    # Set input for player to choose Y/N from
+                    g_game.setYNInput(g_game.getHighGroundOffer)
+                # Else move directly to AI choices and results
+                else:
+                    g_game.highGround(False)
+            case 'Spring the Vaults':
+                g_game.displayText('You deftly navigate the series of intricate traps and locks in place to wrest open the vaults in the Tower\'s basement. Inside the vast, dark space, you find only a single item, set neatly in the center of the floor. A key, to another door. You pocket the key, hoping that whatever it opens will be found in time.')
+                # Add key to party inventory
+                g_game.isKeyFound = True
+            case 'Loot the Storefronts':
+                g_game.displayText('The storefronts have been largely picked over, but an extended search reveals 2 supplies hiding in cabinets and on shelves, in corners and behind locked doors.')
+                # Add supplies
+                g_game.partySupplies += 2
+            case 'Raid the Kitchen':
+                g_game.displayText('You barge into the kitchen, interrupting a four-course meal being prepped by no one. All manner of foodstuffs sit out in a state of half or almost complete preparedness, just waiting to be served. You load your arms with all you can carry, walking away with 4 supplies.')
+                g_game.displayText('Each party member also walks away with a curse upon their name.')
+                # Add supplies
+                g_game.partySupplies += 4
+                # Add curse to each active player
+                for p in g_game.allPlayers:
+                    if p.isAbleToAct():
+                        p.timesCursed += 1 
+            case 'Forage in the Marshland':
+                g_game.displayText('There is much to be found here worth eating, when you know what you are looking for. With a careful eye, you harvest 3 supplies from the wilds.')
+                # Add supplies
+                g_game.partySupplies += 3
+            case 'Search for Shelter':
+                g_game.displayText('Through a slight gap the surface of the cove\'s rocky exterior, you find a place where the party can hunker down and weather the storm.')
+                g_game.isSheltered = True
     # END EXPLORE
 # END CLASS LOCATION
 
@@ -3352,5 +3370,4 @@ if __name__ == '__main__':
  # Cloudblessed reveal message is not output when the player dies.
  # Original version bug that seemingly causes players that have attempted to pass and have no other options available to automatically move to next room after one of them kills a player
  # Players that die should not complete any action (passing at least still succeeds as of now)
- # Reached max recursion depth after wasting away in the Tower while two other players are alive.
- # Program freezes when the party fails to break the tower or wish at the well
+ # NPCs can't waste away as long as the player is trying to pass
