@@ -120,7 +120,7 @@ class Game:
         self.inputFrame = ttk.Frame(self.root, padding=10)
         self.inputFrame.pack(side=LEFT, fill=Y)
         # Build text frame
-        self.textFrame = ttk.Frame(self.root, padding=10)
+        self.textFrame = ttk.Frame(self.root, padding=30)
         self.textFrame.pack(side=LEFT, fill=BOTH, expand=True)
         # Add scrollbar to text frame
         textScroll = Scrollbar(self.textFrame)
@@ -3346,9 +3346,7 @@ if __name__ == '__main__':
  # TODO:
 
  # BUG:
- # Fisherwoman stun is breaking the turn after along with all future text color display
  # Cloudblessed reveal message is not output when the player dies.
  # Original version bug that seemingly causes players that have attempted to pass and have no other options available to automatically move to next room after one of them kills a player
- # Some text is getting moved to the bottom in display instead of all scrolling in order. Text color displays is screwing up at the same time. - could be due to the escaped single quote in that text?
  # Players that die should not complete any action (passing at least still succeeds as of now)
  # Reached max recursion depth after wasting away in the Tower while two other players are alive
