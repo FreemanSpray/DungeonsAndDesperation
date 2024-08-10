@@ -130,6 +130,14 @@ class Game:
         textBox.pack(side=LEFT, fill=BOTH, expand=True)
         # Rig scrollbar to scroll listbox
         textScroll.config(command=textBox.yview)
+        # Load color information in globals
+        global g_characters
+        global g_roles
+        # Configure text colors
+        for c in g_characters:
+            textBox.tag_configure(tagName=c['shortName'], foreground=c['color'])
+        for r in g_roles:
+            textBox.tag_configure(tagName=r['shortName'], background=r['color'])
         # Build portrait frame
         self.portraitFrame = ttk.Frame(self.root, padding=10)
         self.portraitFrame.pack(side=LEFT, fill=Y)
@@ -194,64 +202,15 @@ class Game:
         if self.player:
             # Display only if player is alive and not escaped or if it is a game over print
             if self.player.isInDungeon() or shouldOverride:
-                # Add space before commas, periods, apostraphes, and colons so they will be treated as words
-                output = padPunctuation(output)
-                # Convert string to list of words so we can style word by word
-                outputList = output.split(' ')
-                # Initialize full text length
-                textLength = 0
-                for i in range(len(outputList)):
-                    # Initialize colors
-                    foreColor = 'black'
-                    backColor = 'white'
-                    # Initialize word
-                    word = outputList[i]
-                    wordLength = len(word)
-                    # Initialize tracking boolean
-                    wasSpaceAdded = False
-                    # Check if word is a character short name
-                    player = self.lookupPlayerByCharacter(word)
-                    if player:
-                        # Determine what fore color the character should have
-                        foreColor = player.character['color']
-                        # Update word
-                        word = player.character['name']
-                    # Check if word is a role short name
-                    else:
-                        player = self.lookupPlayerByRole(word)
-                        if player:
-                            # Determine what back color the role should have
-                            backColor = player.role['color']
-                            # Update word
-                            word = player.role['name']
-                    # Store word length
-                    wordLength = len(word)
-                    # If next word is not punctuation, add a space
-                    if i < len(outputList) - 1:
-                        nextWord = outputList[i + 1]
-                        if nextWord != ',' and nextWord != '.' and nextWord != '\'' and nextWord != ':':
-                            word += ' '
-                            # Note that a space was added
-                            wasSpaceAdded = True
-                    # Insert word
-                    self.textFrame.winfo_children()[1].insert(INSERT, word)
-                    # Style as needed
-                    if player:
-                        # Add tag at location of word
-                        tagStart = str(self.textIndex + 1) + '.' + str(textLength)
-                        tagName = tagStart
-                        tagEnd = str(self.textIndex + 1) + '.' + str(textLength + wordLength)
-                        self.textFrame.winfo_children()[1].tag_add(tagName, tagStart, tagEnd)
-                        self.textFrame.winfo_children()[1].tag_config(tagName, foreground=foreColor, background=backColor)
-                    # Update text length
-                    textLength += wordLength
-                    # Add an additional count to textLength if a space was added
-                    if wasSpaceAdded:
-                        textLength += 1
-                # Insert newline
-                self.textFrame.winfo_children()[1].insert(INSERT, '\n')     
-                # Increment index
-                self.textIndex += 1
+                # Extract textBox from textFrame
+                textBox = self.textFrame.winfo_children()[1]
+                # Insert message into textBox
+                textBox.insert(INSERT, output + '\n')
+                # Apply colors
+                for c in g_characters:
+                    self.colorText(c['shortName'], c['shortName'])
+                for r in g_roles:
+                    self.colorText(r['shortName'], r['shortName'])
             # Otherwise print like normal
             else:
                 print(output)
@@ -260,6 +219,38 @@ class Game:
             print(output)
     # END DISPLAYTEXT
 
+    """
+    param: pattern, string indicating what term is to have the color applied to
+    param: tag, string indicating what color should be applied, based on tag configuration of the text frame
+    post: param: all text matching param:pattern has a color applied according to param:tag.
+    ref: https://mathcodelife.com/creating-a-chat-log-for-a-game-using-tkinter-in-python/
+    """
+    def colorText(self, pattern, tag):
+        # Extract important variables from textFrame and textBox
+        textBox = self.textFrame.winfo_children()[1]
+        start = textBox.index('1.0')
+        end = textBox.index('end') 
+        # Define search parameters
+        textBox.mark_set('matchStart', start)
+        textBox.mark_set('matchEnd', start)
+        textBox.mark_set('searchLimit', end)
+        # Initialize intvar
+        count = IntVar()
+        # Look for patterns until all have been found
+        while True:
+            # Find location of next pattern in textBox
+            index = textBox.search(pattern, "matchEnd", "searchLimit", count=count)
+            # Break if pattern is not found
+            if index == "":
+                break
+            # Break if message had length 0
+            if count.get() == 0:
+                break
+            # Add tag to found pattern
+            textBox.mark_set("matchStart", index)
+            textBox.mark_set("matchEnd", "%s+%sc" % (index, count.get()))
+            textBox.tag_add(tag, "matchStart", "matchEnd")
+    
     ### GAME: HELPERS ###
 
     """
