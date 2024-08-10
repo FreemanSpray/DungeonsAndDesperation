@@ -120,7 +120,7 @@ class Game:
         self.inputFrame = ttk.Frame(self.root, padding=10)
         self.inputFrame.pack(side=LEFT, fill=Y)
         # Build text frame
-        self.textFrame = ttk.Frame(self.root, padding=30)
+        self.textFrame = ttk.Frame(self.root, padding=10)
         self.textFrame.pack(side=LEFT, fill=BOTH, expand=True)
         # Add scrollbar to text frame
         textScroll = Scrollbar(self.textFrame)
@@ -788,7 +788,7 @@ class Game:
     """
     def advanceRoom(self):
         # If all players are dead or escaped, end game
-        if len(self.getPresentPlayers()) == None:
+        if len(self.getPresentPlayers()) == 0:
             self.displayText('No players remain in the dungeon. Game Over.')
             # Display winners and losers
             _ = [p.checkWinConditions() for p in self.allPlayers]
@@ -946,6 +946,9 @@ class Game:
     post: next step in member:eventStack is called.
     """
     def advanceStack(self):
+        # Fail if eventStack is empty
+        if len(self.eventStack) == 0:
+            return
         # Pop stack
         method = self.eventStack.pop()
         # Call method
@@ -3349,4 +3352,5 @@ if __name__ == '__main__':
  # Cloudblessed reveal message is not output when the player dies.
  # Original version bug that seemingly causes players that have attempted to pass and have no other options available to automatically move to next room after one of them kills a player
  # Players that die should not complete any action (passing at least still succeeds as of now)
- # Reached max recursion depth after wasting away in the Tower while two other players are alive
+ # Reached max recursion depth after wasting away in the Tower while two other players are alive.
+ # Program freezes when the party fails to break the tower or wish at the well
